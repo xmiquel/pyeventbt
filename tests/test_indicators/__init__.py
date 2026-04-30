@@ -1,0 +1,1 @@
+"""PyEventBT Indicators Tests"""
