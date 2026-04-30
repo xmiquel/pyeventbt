@@ -207,3 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 .DS_Store
+
+# Test data (large files - keep .example files)
+tests/data/*.csv
+!tests/data/*.csv.example
