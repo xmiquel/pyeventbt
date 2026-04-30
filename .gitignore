@@ -211,3 +211,6 @@ __marimo__/
 # Test data (large files - keep .example files)
 tests/data/*.csv
 !tests/data/*.csv.example
+
+# Agent Teams Lite (.atl)
+.atl/
