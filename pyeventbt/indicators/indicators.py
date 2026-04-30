@@ -647,32 +647,33 @@ class DonchianChannels(IIndicator):
         return DonchianChannels._DonchianChannels__compute_donchian(high, low, period)
 
 
+# Module-level function for MACD EMA (required for numba compatibility)
+@njit
+def _compute_ema_for_macd(close: np.ndarray, period: int) -> np.ndarray:
+    """
+    Compute EMA values for MACD calculation.
+    """
+    n = len(close)
+    ema = np.empty(n, dtype=np.float64)
+    ema[:] = np.nan
+    multiplier = 2.0 / (period + 1)
+    
+    # Initialize with SMA
+    sma_sum = 0.0
+    for i in range(period):
+        sma_sum += close[i]
+    ema_value = sma_sum / period
+    ema[period - 1] = ema_value
+    
+    for i in range(period, n):
+        ema_value = (close[i] - ema_value) * multiplier + ema_value
+        ema[i] = ema_value
+    
+    return ema
+
+
 class MACD(IIndicator):
     """Moving Average Convergence Divergence (MACD) indicator."""
-    
-    @staticmethod
-    @njit
-    def __compute_ema_for_macd(close: np.ndarray, period: int) -> np.ndarray:
-        """
-        Compute EMA values for MACD calculation.
-        """
-        n = len(close)
-        ema = np.empty(n, dtype=np.float64)
-        ema[:] = np.nan
-        multiplier = 2.0 / (period + 1)
-        
-        # Initialize with SMA
-        sma_sum = 0.0
-        for i in range(period):
-            sma_sum += close[i]
-        ema_value = sma_sum / period
-        ema[period - 1] = ema_value
-        
-        for i in range(period, n):
-            ema_value = (close[i] - ema_value) * multiplier + ema_value
-            ema[i] = ema_value
-        
-        return ema
     
     @staticmethod
     @njit
@@ -689,9 +690,9 @@ class MACD(IIndicator):
         signal_line[:] = np.nan
         histogram[:] = np.nan
         
-        # Calculate fast and slow EMAs
-        fast_ema = MACD._MACD__compute_ema_for_macd(close, fast_period)
-        slow_ema = MACD._MACD__compute_ema_for_macd(close, slow_period)
+        # Calculate fast and slow EMAs using module-level function
+        fast_ema = _compute_ema_for_macd(close, fast_period)
+        slow_ema = _compute_ema_for_macd(close, slow_period)
         
         # Calculate MACD line
         for i in range(slow_period - 1, n):
