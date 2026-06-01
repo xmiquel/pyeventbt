@@ -411,10 +411,11 @@ class Mt5LiveExecutionEngineConnector(IExecutionEngine):
         else:
             if result is None:
                 logger.warning(f"Pending Order for {symbol} failed. Result is None. Last error: {mt5.last_error()}")
+                return None
             else:
                 logger.warning(f"Pending Order for {symbol} failed with retcode: {result.retcode}. Last error: {mt5.last_error()}")
 
-        
+
         # Convert the result to a dictionary and add the request as a dictionary too. Then convert it back to an OrderSendResult object
         dict_result = result._asdict()
         dict_result['request'] = result.request._asdict()
@@ -553,8 +554,12 @@ class Mt5LiveExecutionEngineConnector(IExecutionEngine):
         if self._check_succesful_order_execution(result):
             logger.info(f"Order {result.order} successfully cancelled")
         else:
-            logger.warning(f"Cancel Pending Order for {result.request.symbol} failed with retcode: {result.retcode}. Last error: {mt5.last_error()}")
-        
+            if result is None:
+                logger.warning(f"Cancel Pending Order for ticket {order_ticket} failed. Result is None. Last error: {mt5.last_error()}")
+                return None
+            else:
+                logger.warning(f"Cancel Pending Order for {result.request.symbol} failed with retcode: {result.retcode}. Last error: {mt5.last_error()}")
+
         # Convert the result to a dictionary and add the request as a dictionary too. Then convert it back to an OrderSendResult object
         dict_result = result._asdict()
         dict_result['request'] = result.request._asdict()
@@ -602,8 +607,12 @@ class Mt5LiveExecutionEngineConnector(IExecutionEngine):
         update_request = {
             'action': mt5.TRADE_ACTION_SLTP,
             'position': position_ticket,
-            'sl': new_sl if new_sl != 0.0 else current_sl,
-            'tp': new_tp if new_tp != 0.0 else current_tp,
+            # mt5.order_send only accepts native floats for sl/tp; a Decimal (or
+            # other numeric) passed by a caller makes order_send return None with
+            # (-2, 'Invalid "sl" argument'). current_sl/current_tp come from the
+            # MT5 position object and are already floats.
+            'sl': float(new_sl) if new_sl != 0.0 else current_sl,
+            'tp': float(new_tp) if new_tp != 0.0 else current_tp,
         }
 
         # Send the order request and get the result as a OrderSendResult object
@@ -613,7 +622,10 @@ class Mt5LiveExecutionEngineConnector(IExecutionEngine):
         if self._check_succesful_order_execution(result):
             logger.info(f"Position {position_ticket} SL/TP updated to {new_sl:.5f}/{new_tp:.5f}")
         else:
-            logger.warning(f"Update Position SL/TP for {position_ticket} failed with retcode: {result.retcode}. Last error: {mt5.last_error()}")
+            if result is None:
+                logger.warning(f"Update Position SL/TP for {position_ticket} failed. Result is None. Last error: {mt5.last_error()}")
+            else:
+                logger.warning(f"Update Position SL/TP for {position_ticket} failed with retcode: {result.retcode}. Last error: {mt5.last_error()}")
     
     def _get_account_currency(self) -> str:
         """Get account currency"""
